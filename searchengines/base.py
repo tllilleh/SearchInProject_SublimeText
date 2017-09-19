@@ -73,18 +73,20 @@ class Base:
             folders)
 
     def _sanitize_output(self, output):
-        return output.decode('utf-8', 'ignore').strip()
+        return output.decode('utf-8', 'ignore').strip().replace("\\", "/")
 
-    def _parse_output(self, output):
+    def _parse_output(self, output):        
+        #print("Parsing: %s" % " ".join(output))
         lines = output.split("\n")
-        line_parts = [line.split(":", 3) if Base.HAS_COLUMN_INFO.match(line) else line.split(":", 2) for line in lines]
+        drive = lines[0][0:2]
+        line_parts = [line[2:].split(":", 3) if Base.HAS_COLUMN_INFO.match(line[2:]) else line[2:].split(":", 2) for line in lines]
         line_parts = self._filter_lines_without_matches(line_parts)
-        return [(":".join(line[0:-1]), line[-1].strip()) for line in line_parts]
+        return [(drive + "|".join(line[0:-1]), line[-1].strip()) for line in line_parts]
 
     def _is_search_error(self, returncode, output, error):
         returncode != 0
 
-    def _full_settings_name(self, name):
+    def _full_settings_name(self, name): 
         return "search_in_project_%s_%s" % (self.__class__.__name__, name)
 
     def _filter_lines_without_matches(self, line_parts):

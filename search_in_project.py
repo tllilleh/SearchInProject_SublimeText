@@ -61,13 +61,17 @@ class SearchInProjectCommand(sublime_plugin.WindowCommand):
         self.last_search_string = text
         folders = self.search_folders()
 
+        folders = [folder.replace("\\", "/") for folder in folders]
         self.common_path = self.find_common_path(folders)
         try:
             self.results = self.engine.run(text, folders)
+            #print(self.results)
             if self.results:
                 self.results = [[result[0].replace(self.common_path.replace('\"', ''), ''), result[1][:self.MAX_RESULT_LINE_LENGTH]] for result in self.results]
-                self.results.append("``` List results in view ```")
-                self.window.show_quick_panel(self.results, self.goto_result)
+                #self.results = [["``` List results in view ```", ""]] + self.results
+                #self.results.append("``` List results in view ```")
+                #self.window.show_quick_panel(self.results, self.goto_result)
+                self.list_in_view()
             else:
                 self.results = []
                 sublime.message_dialog('No results')
@@ -78,16 +82,18 @@ class SearchInProjectCommand(sublime_plugin.WindowCommand):
 
     def goto_result(self, file_no):
         if file_no != -1:
-            if file_no == len(self.results) - 1: # last result is "list in view"
+            #print("file_no: %d" % file_no)
+            #if file_no == len(self.results) - 1: # last result is "list in view"
+            if file_no == 0:
                 self.list_in_view()
             else:
                 file_name = self.common_path.replace('\"', '') + self.results[file_no][0]
-                view = self.window.open_file(file_name, sublime.ENCODED_POSITION)
+                view = self.window.open_file(file_name.replace("|", ":"), sublime.ENCODED_POSITION)
                 regions = view.find_all(self.last_search_string)
                 view.add_regions("search_in_project", regions, "entity.name.filename.find-in-files", "circle", sublime.DRAW_OUTLINED)
 
     def list_in_view(self):
-        self.results.pop()
+        #self.results.pop()
         view = sublime.active_window().new_file()
         view.run_command('search_in_project_results',
             {'query': self.last_search_string,
@@ -124,7 +130,8 @@ class SearchInProjectResultsCommand(sublime_plugin.TextCommand):
     def format_results(self, common_path, results, query):
         grouped_by_filename = defaultdict(list)
         for result in results:
-            filename, location = result[0].split(':', 1)
+            #print("result: %s" % result)
+            filename, location = result[0].split('|', 1)
             text = result[1]
             grouped_by_filename[filename].append((location, text))
         line_count = len(results)
